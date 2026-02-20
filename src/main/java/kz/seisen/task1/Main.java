@@ -3,36 +3,52 @@ package kz.seisen.task1;
 import java.util.*;
 import java.util.concurrent.*;
 
-public class ParallelSumApp {
+public class Main {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
 
-        List<Integer> numbers = Arrays.asList(1,2,3,4,5,6,7,8,9,10);
-        int N = 2;
+        int size = 4_000_000;
+        List<Integer> list = new ArrayList<>(size);
 
-        ExecutorService executor = Executors.newFixedThreadPool(N);
-
-        int partSize = numbers.size() / N;
-        List<Future<Integer>> futures = new ArrayList<>();
-
-        for (int i = 0; i < N; i++) {
-
-            int start = i * partSize;
-            int end = (i == N - 1) ? numbers.size() : start + partSize;
-
-            List<Integer> part = numbers.subList(start, end);
-
-            futures.add(executor.submit(new SumTask(part)));
+        for (int i = 0; i < size; i++) {
+            list.add(1);
         }
 
-        int total = 0;
+        int numberOfThreads = 4;
+        ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
 
-        for (Future<Integer> f : futures) {
-            total += f.get();
+        List<Future<Long>> futures = new ArrayList<>();
+
+        int partSize = list.size() / numberOfThreads;
+
+        for (int i = 0; i < numberOfThreads; i++) {
+
+            final int start = i * partSize;
+            final int end = (i == numberOfThreads - 1) ? list.size() : (i + 1) * partSize;
+
+            List<Integer> part = list.subList(start, end);
+
+            futures.add(executor.submit(() -> {
+                long sum = 0;
+                for (int n : part) {
+                    sum += n;
+                }
+                return sum;
+            }));
         }
 
-        executor.shutdown();
+        long totalSum = 0;
 
-        System.out.println("Total: " + total);
+        try {
+            for (Future<Long> future : futures) {
+                totalSum += future.get();
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        } finally {
+            executor.shutdown();
+        }
+
+        System.out.println("Total Sum: " + totalSum);
     }
 }
